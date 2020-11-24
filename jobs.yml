@@ -1,0 +1,11 @@
+interval: 1m
+db_recorders:
+  - name: "job1"
+    db_conn_str: "root:password@tcp(127.0.0.1:3306)/test?loc=Local&parseTime=true"
+    sql: "SELECT count(*) FROM table1 WHERE created_at > date_sub(now(), INTERVAL 1 MINUTE)"
+  - name: "job2"
+    db_conn_str: "root:password@tcp(127.0.0.1:3306)/test?loc=Local&parseTime=true"
+    sql: "SELECT count(*) FROM table2 WHERE created_at > date_sub(now(), INTERVAL 1 MINUTE)"
+  - name: "job3"
+    db_conn_str: "root:password@tcp(127.0.0.1:3306)/test?loc=Local&parseTime=true"
+    sql: "SELECT count(*) FROM table3 WHERE created_at > date_sub(now(), INTERVAL 1 MINUTE)"
