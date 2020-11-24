@@ -51,6 +51,16 @@ func main() {
 		Name:  "log_path",
 		Usage: "日志文件输出目录（非文件名），默认为空，输出到标准输出",
 	}))
+	app.AddFlags(altsrc.NewDurationFlag(cli.DurationFlag{
+		Name:  "db_query_timeout",
+		Value: 3 * time.Second,
+		Usage: "数据库查询默认超时时间",
+	}))
+	app.AddFlags(altsrc.NewDurationFlag(cli.DurationFlag{
+		Name:  "interval",
+		Value: 60 * time.Second,
+		Usage: "默认任务执行间隔",
+	}))
 
 	app.BeforeServerStart(func(cc container.Container) error {
 		cc.MustResolve(func(c infra.FlagContext) {
@@ -93,7 +103,7 @@ func main() {
 		return &config.Config{
 			Listen:     c.String("listen"),
 			Debug:      c.Bool("debug"),
-			ReportConf: reportConf.Parse(),
+			ReportConf: reportConf.Parse(c.Duration("interval"), c.Duration("db_query_timeout")),
 		}, nil
 	})
 

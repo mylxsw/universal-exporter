@@ -3,43 +3,44 @@ package scheduler
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/mylxsw/asteria/log"
+	"github.com/mylxsw/universal-exporter/config"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
+// DBRecorder 从数据库中查询指标的任务
 type DBRecorder struct {
-	gauge     prometheus.Gauge
-	name      string
-	dbConnStr string
-	query     string
+	gauge           prometheus.Gauge
+	dbQueryRecorder config.DBQueryRecorder
 }
 
-func NewDBRecorder(name string, dbConnStr string, query string) *DBRecorder {
+// NewDBRecorder create a new DBRecorder
+func NewDBRecorder(dbQueryConf config.DBQueryRecorder) *DBRecorder {
 	gauge := promauto.NewGauge(prometheus.GaugeOpts{
-		Namespace: "universal",
-		Name:      name,
+		Namespace: dbQueryConf.Namespace,
+		Name:      dbQueryConf.Name,
 	})
 
-	return &DBRecorder{gauge: gauge, name: name, dbConnStr: dbConnStr, query: query}
+	return &DBRecorder{gauge: gauge, dbQueryRecorder: dbQueryConf}
 }
 
+// Handler 任务体
 func (dbRecorder DBRecorder) Handler() {
-	db, err := sql.Open("mysql", dbRecorder.dbConnStr)
+	db, err := sql.Open("mysql", dbRecorder.dbQueryRecorder.DBConnStr)
 	if err != nil {
-		log.Errorf("can not connect to database for %s: %v", dbRecorder.name, err)
+		log.Errorf("can not connect to database for %s: %v", dbRecorder.dbQueryRecorder.Name, err)
 		return
 	}
 	defer db.Close()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), dbRecorder.dbQueryRecorder.Timeout)
 	defer cancel()
 
-	rows, err := db.QueryContext(ctx, dbRecorder.query)
+	rows, err := db.QueryContext(ctx, dbRecorder.dbQueryRecorder.SQL)
 	if err != nil {
-		log.Errorf("execute sql query for %s failed: %v", dbRecorder.name, err)
+		log.Errorf("execute sql query for %s failed: %v", dbRecorder.dbQueryRecorder.Name, err)
 		return
 	}
 	defer rows.Close()
@@ -47,7 +48,7 @@ func (dbRecorder DBRecorder) Handler() {
 	rows.Next()
 	var metricVal float64
 	if err := rows.Scan(&metricVal); err != nil {
-		log.Errorf("scan result from query for %s failed: %v", dbRecorder.name, err)
+		log.Errorf("scan result from query for %s failed: %v", dbRecorder.dbQueryRecorder.Name, err)
 		return
 	}
 
