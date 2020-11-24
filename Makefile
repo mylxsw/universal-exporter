@@ -1,4 +1,4 @@
-Version := $(shell git describe --tags --dirty)
+Version := $(shell date "+%Y%m%d%H%M")
 GitCommit := $(shell git rev-parse HEAD)
 LDFLAGS := "-s -w -X main.Version=$(Version) -X main.GitCommit=$(GitCommit)"
 
