@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"fmt"
+	"strconv"
 
 	"github.com/mylxsw/container"
 	"github.com/mylxsw/glacier/cron"
@@ -19,8 +20,13 @@ func (s ServiceProvider) Boot(app infra.Glacier) {
 		conf := config.Get(cc)
 		return cc.Resolve(func() {
 			// 数据库查询指标计划任务
-			for _, rec := range conf.ReportConf.DBRecorders {
-				_ = cr.Add(rec.Name, fmt.Sprintf("@every %s", rec.Interval), NewDBRecorder(rec).Handler)
+			for i, rec := range conf.ReportConf.DBRecorders {
+				jobName := rec.Name
+				if jobName == "" {
+					jobName = rec.Namespace + "_" + strconv.Itoa(i)
+				}
+
+				_ = cr.Add(jobName, fmt.Sprintf("@every %s", rec.Interval), NewDBRecorder(rec).Handler)
 			}
 		})
 	})

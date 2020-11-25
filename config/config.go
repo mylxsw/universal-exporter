@@ -23,6 +23,22 @@ type ReportConf struct {
 	DBRecorders []DBQueryRecorder `yaml:"db_recorders" json:"db_recorders"`
 }
 
+// DBQueryRecorder 数据库指标配置
+type DBQueryRecorder struct {
+	Namespace string          `yaml:"namespace,omitempty" json:"namespace,omitempty"`
+	Name      string          `yaml:"name,omitempty" json:"name,omitempty"`
+	Conn      string          `yaml:"conn" json:"conn"`
+	Interval  string          `yaml:"interval" json:"interval"`
+	Timeout   time.Duration   `yaml:"-" json:"timeout"`
+	Metrics   []DBQueryMetric `yaml:"metrics" json:"metrics"`
+}
+
+type DBQueryMetric struct {
+	Name    string        `yaml:"name" json:"name"`
+	SQL     string        `yaml:"sql" json:"sql"`
+	Timeout time.Duration `yaml:"-" json:"timeout"`
+}
+
 // Validate 校验配置是否合法
 func (rc ReportConf) Validate() error {
 	if _, err := time.ParseDuration(rc.Interval); err != nil {
@@ -56,24 +72,24 @@ func (rc ReportConf) Parse(defaultInterval time.Duration, defaultTimeout time.Du
 		if r.Interval == "" {
 			rc.DBRecorders[i].Interval = rc.Interval
 		}
-		if r.Namespace == "" {
+		if r.Namespace != "" {
+			rc.DBRecorders[i].Namespace = strings.Join([]string{rc.Namespace, r.Namespace}, "_")
+		} else {
 			rc.DBRecorders[i].Namespace = rc.Namespace
 		}
 
-		rc.DBRecorders[i].Timeout = defaultTimeout
+		if r.Timeout <= 0 {
+			rc.DBRecorders[i].Timeout = defaultTimeout
+		}
+
+		for j, m := range r.Metrics {
+			if m.Timeout <= 0 {
+				rc.DBRecorders[i].Metrics[j].Timeout = rc.DBRecorders[i].Timeout
+			}
+		}
 	}
 
 	return rc
-}
-
-// DBQueryRecorder 数据库指标配置
-type DBQueryRecorder struct {
-	Namespace string        `yaml:"namespace,omitempty" json:"namespace,omitempty"`
-	Name      string        `yaml:"name" json:"name"`
-	DBConnStr string        `yaml:"db_conn_str" json:"db_conn_str"`
-	SQL       string        `yaml:"sql" json:"sql"`
-	Interval  string        `yaml:"interval" json:"interval"`
-	Timeout   time.Duration `yaml:"-" json:"timeout"`
 }
 
 // Serialize 配置序列化为 json
@@ -85,7 +101,7 @@ func (conf Config) Serialize() string {
 // Desensitize 数据库连接配置脱敏
 func (conf Config) Desensitize() Config {
 	for i, r := range conf.ReportConf.DBRecorders {
-		conf.ReportConf.DBRecorders[i].DBConnStr = desensitize(r.DBConnStr)
+		conf.ReportConf.DBRecorders[i].Conn = desensitize(r.Conn)
 	}
 	return conf
 }
