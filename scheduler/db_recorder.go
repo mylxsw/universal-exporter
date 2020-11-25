@@ -3,34 +3,50 @@ package scheduler
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"reflect"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/mylxsw/asteria/log"
 	"github.com/mylxsw/universal-exporter/config"
+	"github.com/mylxsw/universal-exporter/utils/extracter"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
 // DBRecorder 从数据库中查询指标的任务
 type DBRecorder struct {
-	gauges          map[string]prometheus.Gauge
+	gauges          map[string]*prometheus.GaugeVec
 	dbQueryRecorder config.DBQueryRecorder
+	lock            sync.Mutex
 }
 
 // NewDBRecorder create a new DBRecorder
 func NewDBRecorder(dbQueryConf config.DBQueryRecorder) *DBRecorder {
-	recorder := DBRecorder{gauges: make(map[string]prometheus.Gauge), dbQueryRecorder: dbQueryConf}
-	for _, m := range dbQueryConf.Metrics {
-		recorder.gauges[m.Name] = promauto.NewGauge(prometheus.GaugeOpts{
-			Namespace: dbQueryConf.Namespace,
-			Name:      m.Name,
-		})
-	}
-
+	recorder := DBRecorder{gauges: make(map[string]*prometheus.GaugeVec), dbQueryRecorder: dbQueryConf}
 	return &recorder
 }
 
+func (dbRecorder *DBRecorder) getGaugeVec(name string, namespace string, labels []string) *prometheus.GaugeVec {
+	dbRecorder.lock.Lock()
+	defer dbRecorder.lock.Unlock()
+
+	if gv, ok := dbRecorder.gauges[name]; ok {
+		return gv
+	}
+
+	dbRecorder.gauges[name] = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Namespace: namespace,
+		Name:      name,
+	}, labels)
+
+	return dbRecorder.gauges[name]
+}
+
 // Handler 任务体
-func (dbRecorder DBRecorder) Handler() {
+func (dbRecorder *DBRecorder) Handler() {
 	db, err := sql.Open("mysql", dbRecorder.dbQueryRecorder.Conn)
 	if err != nil {
 		log.Errorf("can not connect to database for %s: %v", dbRecorder.dbQueryRecorder.Name, err)
@@ -51,14 +67,57 @@ func (dbRecorder DBRecorder) Handler() {
 			}
 			defer rows.Close()
 
-			rows.Next()
-			var metricVal float64
-			if err := rows.Scan(&metricVal); err != nil {
-				log.Errorf("scan result from query for %s failed: %v", metric.Name, err)
+			extractedRows, err := extracter.Extract(rows)
+			if err != nil {
+				log.Errorf("extract rows failed: %v", err)
 				return
 			}
 
-			dbRecorder.gauges[metric.Name].Set(metricVal)
+			metricColumnName := "metric"
+			if len(extractedRows.Columns) == 1 {
+				metricColumnName = extractedRows.Columns[0].Name
+			}
+
+			labels := make([]string, 0)
+			var metricColumn extracter.Column
+			for _, ct := range extractedRows.Columns {
+				if !strings.EqualFold(ct.Name, metricColumnName) {
+					labels = append(labels, ct.Name)
+				} else {
+					metricColumn = ct
+				}
+			}
+
+			if metricColumn.Name == "" || !inType(metricColumn.ScanType.Kind(), []reflect.Kind{reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64, reflect.Float32, reflect.Float64}) {
+				log.Errorf("invalid metric columns for %s: %s", metric.Name, metric.SQL)
+				return
+			}
+
+			gauge := dbRecorder.getGaugeVec(metric.Name, dbRecorder.dbQueryRecorder.Namespace, labels)
+			for _, er := range extractedRows.DataSets {
+				var metricValue float64
+
+				labelValues := make(map[string]string)
+				for i, col := range er {
+					if strings.EqualFold(extractedRows.Columns[i].Name, metricColumnName) {
+						metricValue, _ = strconv.ParseFloat(fmt.Sprintf("%v", col), 64)
+					} else {
+						labelValues[extractedRows.Columns[i].Name] = fmt.Sprintf("%v", col)
+					}
+				}
+
+				gauge.With(labelValues).Set(metricValue)
+			}
 		}(m)
 	}
+}
+
+func inType(val reflect.Kind, items []reflect.Kind) bool {
+	for _, item := range items {
+		if item == val {
+			return true
+		}
+	}
+
+	return false
 }
