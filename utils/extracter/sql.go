@@ -31,10 +31,20 @@ func Extract(rows *sql.Rows) (*Rows, error) {
 
 	var columns []Column
 	if err := coll.MustNew(types).Map(func(t *sql.ColumnType) Column {
+		var scanType reflect.Type
+		switch t.DatabaseTypeName() {
+		case "INT", "TINYINT", "BIGINT", "MEDIUMINT", "SMALLINT":
+			scanType = reflect.TypeOf(0)
+		case "DECIMAL":
+			scanType = reflect.TypeOf(0.00)
+		default:
+			scanType = t.ScanType()
+		}
+
 		return Column{
 			Name:     t.Name(),
 			Type:     t.DatabaseTypeName(),
-			ScanType: t.ScanType(),
+			ScanType: scanType,
 		}
 	}).All(&columns); err != nil {
 		return nil, err
@@ -60,9 +70,12 @@ func Extract(rows *sql.Rows) (*Rows, error) {
 
 			res := fmt.Sprintf("%s", *k)
 			switch types[index].DatabaseTypeName() {
-			case "INT", "TINYINT", "BIGINT", "MEDIUMINT", "SMALLINT", "DECIMAL":
+			case "INT", "TINYINT", "BIGINT", "MEDIUMINT", "SMALLINT":
 				intRes, _ := strconv.Atoi(res)
 				return intRes
+			case "DECIMAL":
+				floatRes, _ := strconv.ParseFloat(res, 64)
+				return floatRes
 			}
 
 			return res

@@ -26,6 +26,7 @@ func (s ServiceProvider) Boot(app infra.Glacier) {
 					jobName = rec.Namespace + "_" + strconv.Itoa(i)
 				}
 
+				NewDBRecorder(rec).Handler()
 				_ = cr.Add(jobName, fmt.Sprintf("@every %s", rec.Interval), NewDBRecorder(rec).Handler)
 			}
 		})
