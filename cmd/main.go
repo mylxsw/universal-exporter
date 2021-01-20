@@ -58,7 +58,7 @@ func main() {
 	}))
 	app.AddFlags(altsrc.NewDurationFlag(cli.DurationFlag{
 		Name:  "interval",
-		Value: 60 * time.Second,
+		Value: 15 * time.Second,
 		Usage: "默认任务执行间隔",
 	}))
 
