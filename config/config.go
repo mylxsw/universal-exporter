@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"encoding/gob"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -27,10 +29,30 @@ type ReportConf struct {
 type DBQueryRecorder struct {
 	Namespace string          `yaml:"namespace,omitempty" json:"namespace,omitempty"`
 	Name      string          `yaml:"name,omitempty" json:"name,omitempty"`
-	Conn      string          `yaml:"conn" json:"conn"`
+	Conn      string          `yaml:"conn,omitempty" json:"conn,omitempty"`
+	Conns     []DBQueryConn   `yaml:"conns,omitempty" json:"conns,omitempty"`
 	Interval  string          `yaml:"interval" json:"interval"`
 	Timeout   time.Duration   `yaml:"-" json:"timeout"`
 	Metrics   []DBQueryMetric `yaml:"metrics" json:"metrics"`
+}
+
+// GetConns return connections from conf
+func (qr DBQueryRecorder) GetConns() []DBQueryConn {
+	if len(qr.Conns) == 0 {
+		return []DBQueryConn{{Name: "default", Conn: qr.Conn}}
+	}
+
+	conns := qr.Conns
+	if qr.Conn != "" {
+		conns = append(conns, DBQueryConn{Name: "default", Conn: qr.Conn})
+	}
+
+	return conns
+}
+
+type DBQueryConn struct {
+	Name string `yaml:"name" json:"name"`
+	Conn string `yaml:"conn" json:"conn"`
 }
 
 type DBQueryMetric struct {
@@ -100,10 +122,18 @@ func (conf Config) Serialize() string {
 
 // Desensitize 数据库连接配置脱敏
 func (conf Config) Desensitize() Config {
-	for i, r := range conf.ReportConf.DBRecorders {
-		conf.ReportConf.DBRecorders[i].Conn = desensitize(r.Conn)
+	var newConf Config
+	_ = deepCopy(&newConf, conf)
+
+	for i, r := range newConf.ReportConf.DBRecorders {
+		newConf.ReportConf.DBRecorders[i].Conn = desensitize(r.Conn)
+		if len(r.Conns) > 0 {
+			for j, conn := range r.Conns {
+				newConf.ReportConf.DBRecorders[i].Conns[j].Conn = desensitize(conn.Conn)
+			}
+		}
 	}
-	return conf
+	return newConf
 }
 
 // Get return config object from container
@@ -123,4 +153,12 @@ func desensitize(connStr string) string {
 	}
 
 	return fmt.Sprintf("%s:%s@%s", segs[0], "******", segs2[1])
+}
+
+func deepCopy(dst, src interface{}) error {
+	var buf bytes.Buffer
+	if err := gob.NewEncoder(&buf).Encode(src); err != nil {
+		return err
+	}
+	return gob.NewDecoder(bytes.NewBuffer(buf.Bytes())).Decode(dst)
 }

@@ -47,13 +47,21 @@ func (dbRecorder *DBRecorder) getGaugeVec(name string, namespace string, labels 
 
 // Handler 任务体
 func (dbRecorder *DBRecorder) Handler() {
-	db, err := sql.Open("mysql", dbRecorder.dbQueryRecorder.Conn)
-	if err != nil {
-		log.Errorf("can not connect to database for %s: %v", dbRecorder.dbQueryRecorder.Name, err)
-		return
-	}
-	defer db.Close()
+	for _, conn := range dbRecorder.dbQueryRecorder.GetConns() {
+		func(conn config.DBQueryConn) {
+			db, err := sql.Open("mysql", conn.Conn)
+			if err != nil {
+				log.Errorf("can not connect to database for %s: %v", conn.Name, err)
+				return
+			}
+			defer db.Close()
 
+			dbRecorder.handleSingleConnection(conn.Name, db)
+		}(conn)
+	}
+}
+
+func (dbRecorder *DBRecorder) handleSingleConnection(ds string, db *sql.DB) {
 	backCtx := context.Background()
 	for _, m := range dbRecorder.dbQueryRecorder.Metrics {
 		func(metric config.DBQueryMetric) {
@@ -62,7 +70,7 @@ func (dbRecorder *DBRecorder) Handler() {
 
 			rows, err := db.QueryContext(ctx, metric.SQL)
 			if err != nil {
-				log.Errorf("execute sql query for %s failed: %v", metric.Name, err)
+				log.Errorf("execute sql query for [ds: %s, metric: %s] failed: %v", ds, metric.Name, err)
 				return
 			}
 			defer rows.Close()
@@ -79,6 +87,7 @@ func (dbRecorder *DBRecorder) Handler() {
 			}
 
 			labels := make([]string, 0)
+			labels = append(labels, "ds")
 			var metricColumn extracter.Column
 			for _, ct := range extractedRows.Columns {
 				if !strings.EqualFold(ct.Name, metricColumnName) {
@@ -98,6 +107,7 @@ func (dbRecorder *DBRecorder) Handler() {
 				var metricValue float64
 
 				labelValues := make(map[string]string)
+				labelValues["ds"] = ds
 				for i, col := range er {
 					if strings.EqualFold(extractedRows.Columns[i].Name, metricColumnName) {
 						metricValue, _ = strconv.ParseFloat(fmt.Sprintf("%v", col), 64)
