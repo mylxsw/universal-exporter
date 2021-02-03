@@ -29,6 +29,18 @@ func NewDBRecorder(dbQueryConf config.DBQueryRecorder) *DBRecorder {
 	return &recorder
 }
 
+func (dbRecorder *DBRecorder) getExistedGaugeVecs() []*prometheus.GaugeVec {
+	dbRecorder.lock.Lock()
+	defer dbRecorder.lock.Unlock()
+
+	gauges := make([]*prometheus.GaugeVec, 0)
+	for _, g := range dbRecorder.gauges {
+		gauges = append(gauges, g)
+	}
+
+	return gauges
+}
+
 func (dbRecorder *DBRecorder) getGaugeVec(name string, namespace string, labels []string) *prometheus.GaugeVec {
 	dbRecorder.lock.Lock()
 	defer dbRecorder.lock.Unlock()
@@ -47,6 +59,10 @@ func (dbRecorder *DBRecorder) getGaugeVec(name string, namespace string, labels 
 
 // Handler 任务体
 func (dbRecorder *DBRecorder) Handler() {
+	for _, g := range dbRecorder.getExistedGaugeVecs() {
+		g.Reset()
+	}
+
 	for _, conn := range dbRecorder.dbQueryRecorder.GetConns() {
 		func(conn config.DBQueryConn) {
 			db, err := sql.Open("mysql", conn.Conn)
