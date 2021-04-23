@@ -193,8 +193,9 @@ github.com/modern-go/reflect2 v1.0.1/go.mod h1:bx2lNnkwVCuqBIxFjflWJWanXIb3Rllmb
 github.com/mwitkow/go-conntrack v0.0.0-20161129095857-cc309e4a2223/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mwitkow/go-conntrack v0.0.0-20190716064945-2f068394615f/go.mod h1:qRWi+5nqEBWmkhHvq77mSJWrCKwh8bxhgT7d/eI7P4U=
 github.com/mylxsw/asteria v0.0.0-20190730075526-1867e6bc4dbe/go.mod h1:yKtYUYKkYe2xOB6qqHW+NnoHd6zBFRk72NS/8V/dgwk=
-github.com/mylxsw/asteria v0.0.0-20201109073030-ef64164c7661 h1:JZS8euU+/cMmZ7m6GkmuxReZJKSdFyp5p4ItVsemsPk=
 github.com/mylxsw/asteria v0.0.0-20201109073030-ef64164c7661/go.mod h1:v0FN8lOptbljEJBRtBrvompc+NyUpIR7Dcpg2f9823s=
+github.com/mylxsw/asteria v0.0.0-20210423061904-9b17f4c87f96 h1:OxvE/N9rgWD58AwJW1rAtGGS7KXYJf2y6DejfaqKXJM=
+github.com/mylxsw/asteria v0.0.0-20210423061904-9b17f4c87f96/go.mod h1:LLAdhjXLJdhyCmb3Mh+/DiNgjeCIZ+Z/VWMF3tmJoXU=
 github.com/mylxsw/coll v0.0.0-20200612040853-4275264442f9 h1:lIkaR71UX7xCQLNppsj52QpXufseVp3kiEgxqSNJco0=
 github.com/mylxsw/coll v0.0.0-20200612040853-4275264442f9/go.mod h1:ajdrWwm8dvgQ2BJw5+Z9DA1hw76v1fjD6GpIqjjQ6xo=
 github.com/mylxsw/container v0.0.0-20200525090619-01208c02b074 h1:8OLLLh/tG7M5kQrkmFIVYFpj2bLUtYZ3q+jp4vcA5gQ=
@@ -381,6 +382,8 @@ golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211 h1:9UQO31fZ+0aKQOFldThf7BKPM
 golang.org/x/sys v0.0.0-20201015000850-e3ed0017c211/go.mod h1:h1NjWce9XRLGQEsW7wpKNCjG9DtNlClVuFLEZdDNbEs=
 golang.org/x/text v0.3.0/go.mod h1:NqM8EUOU14njkJ3fqMW+pc6Ldnwhi/IjpwHt7yyuwOQ=
 golang.org/x/text v0.3.2/go.mod h1:bEr9sfX3Q8Zfm5fL9x+3itogRgK3+ptLWKqgva+5dAk=
+golang.org/x/text v0.3.4 h1:0YWbFKbhXG/wIiuHDSKpS0Iy7FSA+u45VtBMfQcFTTc=
+golang.org/x/text v0.3.4/go.mod h1:5Zoc/QRtKVWzQhOtBMvqHzDpF6irO9z98xDceosuGiQ=
 golang.org/x/time v0.0.0-20180412165947-fbb02b2291d2/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/time v0.0.0-20191024005414-555d28b269f0/go.mod h1:tRJNPiyCQ0inRvYxbN9jk5I+vvW/OXSQhTDSoE431IQ=
 golang.org/x/tools v0.0.0-20180221164845-07fd8470d635/go.mod h1:n7NCudcB/nEzxVGmLbDWY5pfWTLqBcC2KZ6jyYvM4mQ=

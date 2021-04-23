@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -63,14 +64,14 @@ func main() {
 	}))
 
 	app.BeforeServerStart(func(cc container.Container) error {
-		cc.MustResolve(func(c infra.FlagContext) {
+		cc.MustResolve(func(ctx context.Context, c infra.FlagContext) {
 			logPath := c.String("log_path")
 			if logPath == "" {
 				return
 			}
 
 			log.All().LogFormatter(formatter.NewJSONWithTimeFormatter())
-			log.All().LogWriter(writer.NewDefaultRotatingFileWriter(func(le level.Level, module string) string {
+			log.All().LogWriter(writer.NewDefaultRotatingFileWriter(ctx, func(le level.Level, module string) string {
 				return filepath.Join(logPath, fmt.Sprintf("universal-exporter-%s.%s.log", le.GetLevelName(), time.Now().Format("20060102")))
 			}))
 		})
